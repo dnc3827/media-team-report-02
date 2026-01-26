@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MediaTeam Hub v2.0 - Production Ready</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+  <style>
+    [v-cloak] { display: none; }
+    .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+    .glass-morphism { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+  </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+<div id="app" v-cloak>
+  <nav class="bg-white shadow-md sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+    <div class="flex items-center gap-2">
+      <div class="bg-gradient-to-br from-blue-600 to-indigo-700 p-2 rounded-lg text-white shadow-lg">
+        <i data-lucide="shield-check"></i>
+      </div>
+      <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-700">
+        MediaTeam Hub
+      </h1>
+    </div>
+
+    <div class="flex gap-2 bg-gray-100 p-1 rounded-xl">
+      <button
+        @click="currentTab = 'report'"
+        :class="{'bg-white shadow text-blue-600': currentTab === 'report'}"
+        class="px-6 py-2 rounded-lg font-medium transition text-gray-500"
+      >
+        Báo cáo
+      </button>
+
+      <!-- NEW: Sell-out tab -->
+      <button
+        @click="currentTab = 'sellout'"
+        :class="{'bg-white shadow text-blue-600': currentTab === 'sellout'}"
+        class="px-6 py-2 rounded-lg font-medium transition text-gray-500"
+      >
+        Sell-out
+      </button>
+
+      <button
+        @click="checkAdminAccess"
+        :class="{'bg-white shadow text-blue-600': currentTab === 'admin'}"
+        class="px-6 py-2 rounded-lg font-medium transition text-gray-500"
+      >
+        Admin
+      </button>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto p-6">
+
+    <!-- REPORT TAB (original) -->
+    <div v-if="currentTab === 'report'" class="max-w-xl mx-auto py-10">
+      <div class="bg-white rounded-2xl shadow-xl p-8 border border-white overflow-hidden relative">
+        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-indigo-600"></div>
+        <h2 class="text-2xl font-bold mb-2 text-gray-800 text-center">Báo cáo bài đăng mới</h2>
+        <p class="text-gray-500 text-center mb-8 text-sm">Vui lòng điền đầy đủ thông tin bài đã đăng</p>
+
+        <form @submit.prevent="submitReport" class="space-y-5">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2 md:col-span-1">
+              <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Họ tên nhân viên</label>
+              <input v-model="form.user" type="text" required
+                     class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" />
+            </div>
+            <div class="col-span-2 md:col-span-1">
+              <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Nền tảng</label>
+              <select v-model="form.platform"
+                      class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
+                <option value="Facebook">Facebook</option>
+                <option value="TikTok">TikTok</option>
+                <option value="Instagram">Instagram</option>
+                <option value="YouTube">YouTube</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Link bài viết (URL)</label>
+            <input v-model="form.link" type="url" required placeholder="https://www.facebook.com/..."
+                   class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" />
+          </div>
+
+          <button type="submit" :disabled="loading"
+                  class="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-4 rounded-xl font-bold hover:scale-[1.02] active:scale-[0.98] transition shadow-lg shadow-blue-200 flex justify-center items-center gap-2">
+            <span v-if="loading" class="animate-spin text-xl">⏳</span>
+            <span v-else>Gửi báo cáo hệ thống</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- SELL-OUT TAB (NEW) -->
+    <div v-if="currentTab === 'sellout'" class="space-y-6">
+
+      <!-- Form nhập sell-out -->
+      <div class="max-w-2xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-xl p-8 border border-white overflow-hidden relative">
+          <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-teal-600"></div>
+          <h2 class="text-2xl font-bold mb-2 text-gray-800 text-center">Báo cáo Sell-out</h2>
+          <p class="text-gray-500 text-center mb-8 text-sm">Nhập số lượng & doanh thu bán ra (VNĐ)</p>
+
+          <form @submit.prevent="submitSale" class="space-y-5">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="col-span-2 md:col-span-1">
+                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Họ tên nhân viên</label>
+                <input v-model="saleForm.user" type="text" required
+                       class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition" />
+              </div>
+              <div class="col-span-2 md:col-span-1">
+                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Team</label>
+                <select v-model="saleForm.team"
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                  <option value="Sale">Sale</option>
+                  <option value="MKT">MKT</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div class="col-span-2 md:col-span-1">
+                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Sản phẩm / Dịch vụ</label>
+                <input v-model="saleForm.item" type="text" required placeholder="Áo / Dưa hấu / Dịch vụ..."
+                       class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition" />
+              </div>
+              <div class="col-span-2 md:col-span-1">
+                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Kênh</label>
+                <select v-model="saleForm.channel"
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                  <option value="Online">Online</option>
+                  <option value="Offline">Offline</option>
+                  <option value="Facebook">Facebook</option>
+                  <option value="Zalo">Zalo</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Số lượng</label>
+                <input v-model.number="saleForm.qty" type="number" min="1" required
+                       class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Doanh thu (VNĐ)</label>
+                <input v-model.number="saleForm.revenue" type="number" min="0" step="1000" required
+                       class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition" />
+              </div>
+            </div>
+
+            <button type="submit" :disabled="saleLoading"
+                    class="w-full bg-gradient-to-r from-emerald-600 to-teal-700 text-white py-4 rounded-xl font-bold hover:scale-[1.02] active:scale-[0.98] transition shadow-lg shadow-emerald-200 flex justify-center items-center gap-2">
+              <span v-if="saleLoading" class="animate-spin text-xl">⏳</span>
+              <span v-else>Gửi báo cáo Sell-out</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Dashboard sell-out chỉ admin xem -->
+      <div v-if="isAdmin" class="max-w-7xl mx-auto space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <p class="text-gray-400 text-xs font-bold uppercase">Tổng bản ghi sell-out</p>
+            <h3 class="text-2xl font-black text-gray-800">{{ sales.length }}</h3>
+          </div>
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <p class="text-gray-400 text-xs font-bold uppercase">Tổng doanh thu</p>
+            <h3 class="text-2xl font-black text-gray-800">{{ formatVND(totalRevenue) }}</h3>
+          </div>
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <p class="text-gray-400 text-xs font-bold uppercase">Tổng số lượng</p>
+            <h3 class="text-2xl font-black text-gray-800">{{ totalQty }}</h3>
+          </div>
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <p class="text-gray-400 text-xs font-bold uppercase">Số nhân sự có bán</p>
+            <h3 class="text-2xl font-black text-gray-800">{{ ranking.length }}</h3>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-1">
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="font-bold">Top doanh thu (Bar)</h4>
+              <select v-model.number="topN" class="text-xs border rounded-lg px-2 py-1 bg-gray-50">
+                <option :value="5">Top 5</option>
+                <option :value="10">Top 10</option>
+                <option :value="20">Top 20</option>
+              </select>
+            </div>
+            <div class="w-full h-64">
+              <canvas id="selloutChart"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+            <div class="flex justify-between items-center mb-4">
+              <h4 class="font-bold">Ranking doanh thu (Sell-out)</h4>
+              <button @click="exportSelloutToCSV"
+                      class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200 font-bold hover:bg-emerald-100">
+                Xuất CSV
+              </button>
+            </div>
+
+            <div class="overflow-x-auto max-h-96">
+              <table class="w-full text-left">
+                <thead class="sticky top-0 bg-white">
+                <tr class="text-gray-400 text-xs uppercase border-b">
+                  <th class="pb-3 px-2">#</th>
+                  <th class="pb-3 px-2">Nhân viên</th>
+                  <th class="pb-3 px-2">Team</th>
+                  <th class="pb-3 px-2 text-right">SL</th>
+                  <th class="pb-3 px-2 text-right">Doanh thu</th>
+                </tr>
+                </thead>
+
+                <tbody class="divide-y divide-gray-50">
+                <tr v-for="(r, idx) in ranking" :key="r.user + '_' + r.team" class="hover:bg-emerald-50/30 transition">
+                  <td class="py-4 px-2 text-sm font-black text-gray-600">{{ idx + 1 }}</td>
+                  <td class="py-4 px-2 font-bold text-gray-800 text-sm">{{ r.user }}</td>
+                  <td class="py-4 px-2">
+                    <span class="text-[10px] font-black px-2 py-0.5 rounded"
+                          :class="r.team === 'Sale' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'">
+                      {{ r.team }}
+                    </span>
+                  </td>
+                  <td class="py-4 px-2 text-right text-sm font-bold text-gray-700">{{ r.qty }}</td>
+                  <td class="py-4 px-2 text-right text-sm font-black text-gray-800">{{ formatVND(r.revenue) }}</td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mt-6">
+              <h4 class="font-bold mb-3">Lịch sử nhập sell-out (Real-time)</h4>
+
+              <div class="overflow-x-auto max-h-72">
+                <table class="w-full text-left">
+                  <thead class="sticky top-0 bg-white">
+                  <tr class="text-gray-400 text-xs uppercase border-b">
+                    <th class="pb-3 px-2">Nhân viên</th>
+                    <th class="pb-3 px-2">Item</th>
+                    <th class="pb-3 px-2 text-right">SL</th>
+                    <th class="pb-3 px-2 text-right">Doanh thu</th>
+                    <th class="pb-3 px-2">Kênh</th>
+                    <th class="pb-3 px-2">Thời gian</th>
+                    <th class="pb-3 px-2 text-right">Xóa</th>
+                  </tr>
+                  </thead>
+
+                  <tbody class="divide-y divide-gray-50">
+                  <tr v-for="s in sales" :key="s.id" class="hover:bg-emerald-50/30 transition">
+                    <td class="py-3 px-2 font-bold text-gray-700 text-sm">{{ s.user }}</td>
+                    <td class="py-3 px-2 text-sm text-gray-700">{{ s.item }}</td>
+                    <td class="py-3 px-2 text-right text-sm font-bold text-gray-700">{{ s.qty }}</td>
+                    <td class="py-3 px-2 text-right text-sm font-black text-gray-800">{{ formatVND(s.revenue) }}</td>
+                    <td class="py-3 px-2 text-xs text-gray-500">{{ s.channel }}</td>
+                    <td class="py-3 px-2 text-gray-400 text-[10px]">{{ formatTime(s.timestamp) }}</td>
+                    <td class="py-3 px-2 text-right">
+                      <button @click="deleteSale(s.id)" class="text-red-400 hover:text-red-600 transition p-1">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="max-w-2xl mx-auto text-center text-sm text-gray-500">
+        * Ranking doanh thu chỉ hiển thị cho Admin.
+      </div>
+
+    </div>
+
+    <!-- ADMIN TAB (original) -->
+    <div v-if="currentTab === 'admin' && isAdmin" class="space-y-6 animate-in fade-in duration-500">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div v-for="stat in stats" :key="stat.label" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+          <p class="text-gray-400 text-xs font-bold uppercase">{{ stat.label }}</p>
+          <h3 class="text-2xl font-black text-gray-800">{{ stat.value }}</h3>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-1 flex flex-col items-center">
+          <h4 class="font-bold mb-4 self-start">Tỷ lệ Nền tảng</h4>
+          <div class="w-full h-64">
+            <canvas id="platformChart"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+          <div class="flex justify-between items-center mb-4">
+            <h4 class="font-bold">Lịch sử báo cáo (Real-time)</h4>
+            <button @click="exportToCSV"
+                    class="text-xs bg-green-50 text-green-600 px-3 py-1 rounded-full border border-green-200 font-bold hover:bg-green-100">
+              Xuất CSV
+            </button>
+          </div>
+
+          <div class="overflow-x-auto max-h-96">
+            <table class="w-full text-left">
+              <thead class="sticky top-0 bg-white">
+              <tr class="text-gray-400 text-xs uppercase border-b">
+                <th class="pb-3 px-2">Nhân viên</th>
+                <th class="pb-3 px-2">Platform</th>
+                <th class="pb-3 px-2">Link</th>
+                <th class="pb-3 px-2">Thời gian</th>
+                <th class="pb-3 px-2 text-right">Xóa</th>
+              </tr>
+              </thead>
+
+              <tbody class="divide-y divide-gray-50">
+              <tr v-for="post in posts" :key="post.id" class="hover:bg-blue-50/30 transition">
+                <td class="py-4 px-2 font-bold text-gray-700 text-sm">{{ post.user }}</td>
+                <td class="py-4 px-2">
+                  <span :class="getPlatformColor(post.platform)"
+                        class="px-2 py-0.5 rounded text-[10px] font-black text-white">
+                    {{ post.platform }}
+                  </span>
+                </td>
+                <td class="py-4 px-2">
+                  <a :href="post.link" target="_blank"
+                     class="text-blue-500 hover:underline flex items-center gap-1 text-xs">
+                    Link
+                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                  </a>
+                </td>
+                <td class="py-4 px-2 text-gray-400 text-[10px]">{{ formatTime(post.timestamp) }}</td>
+                <td class="py-4 px-2 text-right">
+                  <button @click="deletePost(post.id)" class="text-red-400 hover:text-red-600 transition p-1">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </button>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- LOGIN MODAL (original) -->
+  <div v-if="showLogin" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+    <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in duration-300">
+      <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
+        <i data-lucide="lock" class="w-8 h-8"></i>
+      </div>
+      <h3 class="text-xl font-bold text-center mb-2">Quyền truy cập Admin</h3>
+      <p class="text-gray-500 text-center text-sm mb-6">Nhập mật khẩu để xem thống kê</p>
+
+      <input v-model="adminPass" type="password" placeholder="Mật khẩu..."
+             class="w-full px-4 py-3 border rounded-xl mb-4 outline-none focus:ring-2 focus:ring-blue-500 text-center" />
+
+      <div class="flex gap-2">
+        <button @click="showLogin = false"
+                class="flex-1 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition">
+          Hủy
+        </button>
+        <button @click="loginAdmin"
+                class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition">
+          Xác nhận
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyC-rfJLLy8eD11Ett1MNcsXTnean497Tbk",
+    authDomain: "social-post-reporting.firebaseapp.com",
+    projectId: "social-post-reporting",
+    storageBucket: "social-post-reporting.firebasestorage.app",
+    messagingSenderId: "600995142287",
+    appId: "1:600995142287:web:2d74db66d825520e1b6efa",
+    measurementId: "G-V106CQTG0F",
+    databaseURL: "https://social-post-reporting-default-rtdb.asia-southeast1.firebasedatabase.app/"
+  };
+
+  const useFirebase = true;
+  try { firebase.initializeApp(firebaseConfig); } catch(e) {}
+
+  // Original posts ref
+  const db = firebase.database().ref('posts');
+  // NEW sell-out ref
+  const dbSales = firebase.database().ref('sales');
+
+  const { createApp, ref, onMounted, computed, watch, nextTick } = Vue;
+
+  createApp({
+    setup() {
+      const currentTab = ref('report');
+      const posts = ref([]);
+      const loading = ref(false);
+      const isAdmin = ref(false);
+      const showLogin = ref(false);
+      const adminPass = ref('');
+      const form = ref({ user: '', platform: 'Facebook', link: '' });
+
+      let chart = null;
+
+      // ===== NEW: SELL-OUT STATE =====
+      const sales = ref([]);
+      const saleLoading = ref(false);
+      const saleForm = ref({ user: '', team: 'Sale', item: '', qty: 1, revenue: 0, channel: 'Online' });
+      const topN = ref(10);
+      let selloutChart = null;
+
+      // ===== LOAD POSTS (original) =====
+      const loadData = () => {
+        db.on('value', (snapshot) => {
+          const data = snapshot.val();
+          if (data) {
+            posts.value = Object.keys(data).map(key => ({
+              id: key,
+              ...data[key]
+            })).reverse();
+          } else {
+            posts.value = [];
+          }
+
+          if (isAdmin.value && currentTab.value === 'admin') {
+            setTimeout(() => { initChart(); lucide.createIcons(); }, 100);
+          }
+        });
+      };
+
+      // ===== NEW: LOAD SALES (sell-out) =====
+      const loadSales = () => {
+        dbSales.on('value', (snapshot) => {
+          const data = snapshot.val();
+          if (data) {
+            sales.value = Object.keys(data).map(key => ({
+              id: key,
+              ...data[key]
+            })).reverse();
+          } else {
+            sales.value = [];
+          }
+
+          if (isAdmin.value && currentTab.value === 'sellout') {
+            setTimeout(() => { initSelloutChart(); lucide.createIcons(); }, 100);
+          }
+        });
+      };
+
+      // ===== SUBMIT REPORT (original) =====
+      const submitReport = async () => {
+        loading.value = true;
+        try {
+          const newPost = { ...form.value, timestamp: new Date().getTime() };
+          await db.push(newPost);
+          alert('Báo cáo đã được ghi lại thành công!');
+          form.value = { user: '', platform: 'Facebook', link: '' };
+        } catch (error) {
+          alert('Lỗi: ' + error.message);
+        } finally {
+          loading.value = false;
+        }
+      };
+
+      // ===== DELETE POST (original) =====
+      const deletePost = async (id) => {
+        if (confirm('Bạn có chắc chắn muốn xóa báo cáo này?')) {
+          try {
+            await db.child(id).remove();
+          } catch (error) {
+            alert('Không thể xóa: ' + error.message);
+          }
+        }
+      };
+
+      // ===== NEW: SUBMIT SALE =====
+      const submitSale = async () => {
+        saleLoading.value = true;
+        try {
+          const payload = {
+            ...saleForm.value,
+            qty: Number(saleForm.value.qty || 0),
+            revenue: Number(saleForm.value.revenue || 0),
+            timestamp: new Date().getTime(),
+          };
+          await dbSales.push(payload);
+          alert('Sell-out đã được ghi lại!');
+          saleForm.value = { user: '', team: 'Sale', item: '', qty: 1, revenue: 0, channel: 'Online' };
+        } catch (error) {
+          alert('Lỗi: ' + error.message);
+        } finally {
+          saleLoading.value = false;
+        }
+      };
+
+      // ===== NEW: DELETE SALE =====
+      const deleteSale = async (id) => {
+        if (confirm('Bạn có chắc chắn muốn xóa sell-out này?')) {
+          try {
+            await dbSales.child(id).remove();
+          } catch (error) {
+            alert('Không thể xóa: ' + error.message);
+          }
+        }
+      };
+
+      // ===== ADMIN ACCESS (original) =====
+      const checkAdminAccess = () => {
+        if (isAdmin.value) currentTab.value = 'admin';
+        else showLogin.value = true;
+      };
+
+      const loginAdmin = () => {
+        if (adminPass.value === 'admin123') {
+          isAdmin.value = true;
+          showLogin.value = false;
+          currentTab.value = 'admin';
+        } else {
+          alert('Sai mật khẩu!');
+        }
+      };
+
+      // ===== WATCH TAB (extended, keep original behavior) =====
+      watch(currentTab, async (newTab) => {
+        if (newTab === 'admin' && isAdmin.value) {
+          await nextTick();
+          initChart();
+          lucide.createIcons();
+        } else if (newTab === 'sellout' && isAdmin.value) {
+          await nextTick();
+          initSelloutChart();
+          lucide.createIcons();
+        } else {
+          // still re-render icons when switching tabs for safety
+          await nextTick();
+          lucide.createIcons();
+        }
+      });
+
+      // ===== STATS (original) =====
+      const stats = computed(() => [
+        { label: 'Tổng bài đăng', value: posts.value.length },
+        { label: 'Facebook', value: posts.value.filter(p => p.platform === 'Facebook').length },
+        { label: 'TikTok', value: posts.value.filter(p => p.platform === 'TikTok').length },
+        { label: 'Khác', value: posts.value.filter(p => !['Facebook', 'TikTok'].includes(p.platform)).length },
+      ]);
+
+      // ===== HELPERS (original) =====
+      const formatTime = (ts) => new Date(ts).toLocaleString('vi-VN');
+      const getPlatformColor = (p) => {
+        const colors = { 'Facebook': 'bg-blue-600', 'TikTok': 'bg-black', 'Instagram': 'bg-pink-600', 'YouTube': 'bg-red-600' };
+        return colors[p] || 'bg-gray-500';
+      };
+
+      // ===== CHART (original) =====
+      const initChart = () => {
+        const ctx = document.getElementById('platformChart');
+        if (!ctx) return;
+        const dataMap = posts.value.reduce((acc, p) => {
+          acc[p.platform] = (acc[p.platform] || 0) + 1;
+          return acc;
+        }, {});
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(dataMap),
+            datasets: [{ data: Object.values(dataMap), backgroundColor: ['#2563eb', '#000000', '#db2777', '#dc2626'] }]
+          },
+          options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+      };
+
+      // ===== EXPORT CSV (original) =====
+      const exportToCSV = () => {
+        let csv = 'User,Platform,Link,Timestamp\n';
+        posts.value.forEach(p => csv += `${p.user},${p.platform},${p.link},${formatTime(p.timestamp)}\n`);
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', 'report_media.csv');
+        a.click();
+      };
+
+      // ===== NEW: SELL-OUT COMPUTED =====
+      const totalRevenue = computed(() =>
+        sales.value.reduce((sum, s) => sum + (Number(s.revenue) || 0), 0)
+      );
+
+      const totalQty = computed(() =>
+        sales.value.reduce((sum, s) => sum + (Number(s.qty) || 0), 0)
+      );
+
+      const ranking = computed(() => {
+        const map = new Map();
+        for (const s of sales.value) {
+          const user = (s.user || '').trim();
+          if (!user) continue;
+          const team = (s.team || '-').trim() || '-';
+          const key = `${user}__${team}`;
+          if (!map.has(key)) map.set(key, { user, team, qty: 0, revenue: 0 });
+          const item = map.get(key);
+          item.qty += Number(s.qty) || 0;
+          item.revenue += Number(s.revenue) || 0;
+        }
+
+        return Array.from(map.values())
+          .sort((a, b) => b.revenue - a.revenue)
+          .slice(0, Number(topN.value) || 10);
+      });
+
+      const formatVND = (v) => {
+        const n = Number(v || 0);
+        return n.toLocaleString('vi-VN') + ' ₫';
+      };
+
+      // ===== NEW: SELL-OUT CHART =====
+      const initSelloutChart = () => {
+        const ctx = document.getElementById('selloutChart');
+        if (!ctx) return;
+
+        const labels = ranking.value.map(r => r.user);
+        const data = ranking.value.map(r => r.revenue);
+
+        if (selloutChart) selloutChart.destroy();
+        selloutChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{ label: 'Doanh thu (VNĐ)', data }]
+          },
+          options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                ticks: {
+                  callback: (value) => Number(value).toLocaleString('vi-VN')
+                }
+              }
+            }
+          }
+        });
+      };
+
+      // ===== NEW: EXPORT SELL-OUT CSV =====
+      const exportSelloutToCSV = () => {
+        let csv = 'User,Team,Item,Qty,Revenue,Channel,Timestamp\n';
+        sales.value.forEach(s => {
+          csv += `${(s.user || '')},${(s.team || '')},${(s.item || '')},${Number(s.qty || 0)},${Number(s.revenue || 0)},${(s.channel || '')},${formatTime(s.timestamp)}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', 'sellout.csv');
+        a.click();
+      };
+
+      // ===== INIT =====
+      onMounted(() => {
+        loadData();
+        loadSales(); // NEW
+        lucide.createIcons();
+      });
+
+      return {
+        // original
+        currentTab, form, posts, loading, isAdmin, showLogin, adminPass,
+        stats, submitReport, deletePost, checkAdminAccess, loginAdmin,
+        formatTime, getPlatformColor, exportToCSV,
+
+        // sell-out
+        sales, saleForm, saleLoading, submitSale, deleteSale,
+        ranking, topN, totalRevenue, totalQty, formatVND, exportSelloutToCSV
+      };
+    }
+  }).mount('#app');
+</script>
+</body>
+</html>
