@@ -41,7 +41,7 @@
         Báo cáo
       </button>
 
-      <!-- NEW: Sell-out tab -->
+      <!-- Sell-out tab -->
       <button
         @click="currentTab = 'sellout'"
         :class="{'bg-white shadow text-blue-600': currentTab === 'sellout'}"
@@ -103,7 +103,7 @@
       </div>
     </div>
 
-    <!-- SELL-OUT TAB (NEW) -->
+    <!-- SELL-OUT TAB (PUBLIC DASHBOARD) -->
     <div v-if="currentTab === 'sellout'" class="space-y-6">
 
       <!-- Form nhập sell-out -->
@@ -171,7 +171,7 @@
         </div>
       </div>
 
-      <!-- Dashboard sell-out chỉ admin xem -->
+      <!-- PUBLIC DASHBOARD -->
       <div class="max-w-7xl mx-auto space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
@@ -271,9 +271,11 @@
                     <td class="py-3 px-2 text-xs text-gray-500">{{ s.channel }}</td>
                     <td class="py-3 px-2 text-gray-400 text-[10px]">{{ formatTime(s.timestamp) }}</td>
                     <td class="py-3 px-2 text-right">
-                      <button @click="deleteSale(s.id)" class="text-red-400 hover:text-red-600 transition p-1">
+                      <!-- Keep delete for admin only -->
+                      <button v-if="isAdmin" @click="deleteSale(s.id)" class="text-red-400 hover:text-red-600 transition p-1">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                       </button>
+                      <span v-else class="text-[10px] text-gray-300">—</span>
                     </td>
                   </tr>
                   </tbody>
@@ -283,10 +285,6 @@
 
           </div>
         </div>
-      </div>
-
-      <div v-else class="max-w-2xl mx-auto text-center text-sm text-gray-500">
-        * Ranking doanh thu chỉ hiển thị cho Admin.
       </div>
 
     </div>
@@ -404,7 +402,7 @@
 
   // Original posts ref
   const db = firebase.database().ref('posts');
-  // NEW sell-out ref
+  // Sell-out ref
   const dbSales = firebase.database().ref('sales');
 
   const { createApp, ref, onMounted, computed, watch, nextTick } = Vue;
@@ -421,7 +419,7 @@
 
       let chart = null;
 
-      // ===== NEW: SELL-OUT STATE =====
+      // ===== SELL-OUT STATE =====
       const sales = ref([]);
       const saleLoading = ref(false);
       const saleForm = ref({ user: '', team: 'Sale', item: '', qty: 1, revenue: 0, channel: 'Online' });
@@ -447,7 +445,7 @@
         });
       };
 
-      // ===== NEW: LOAD SALES (sell-out) =====
+      // ===== LOAD SALES (PUBLIC dashboard needs chart refresh without admin) =====
       const loadSales = () => {
         dbSales.on('value', (snapshot) => {
           const data = snapshot.val();
@@ -460,7 +458,8 @@
             sales.value = [];
           }
 
-          if (isAdmin.value && currentTab.value === 'sellout') {
+          // PUBLIC: if currently on sellout tab, update chart
+          if (currentTab.value === 'sellout') {
             setTimeout(() => { initSelloutChart(); lucide.createIcons(); }, 100);
           }
         });
@@ -492,7 +491,7 @@
         }
       };
 
-      // ===== NEW: SUBMIT SALE =====
+      // ===== SUBMIT SALE =====
       const submitSale = async () => {
         saleLoading.value = true;
         try {
@@ -512,7 +511,7 @@
         }
       };
 
-      // ===== NEW: DELETE SALE =====
+      // ===== DELETE SALE (admin only in UI) =====
       const deleteSale = async (id) => {
         if (confirm('Bạn có chắc chắn muốn xóa sell-out này?')) {
           try {
@@ -539,18 +538,17 @@
         }
       };
 
-      // ===== WATCH TAB (extended, keep original behavior) =====
+      // ===== WATCH TAB (PUBLIC sellout chart) =====
       watch(currentTab, async (newTab) => {
         if (newTab === 'admin' && isAdmin.value) {
           await nextTick();
           initChart();
           lucide.createIcons();
-        } else if (newTab === 'sellout' && isAdmin.value) {
+        } else if (newTab === 'sellout') {
           await nextTick();
           initSelloutChart();
           lucide.createIcons();
         } else {
-          // still re-render icons when switching tabs for safety
           await nextTick();
           lucide.createIcons();
         }
@@ -602,7 +600,7 @@
         a.click();
       };
 
-      // ===== NEW: SELL-OUT COMPUTED =====
+      // ===== SELL-OUT COMPUTED =====
       const totalRevenue = computed(() =>
         sales.value.reduce((sum, s) => sum + (Number(s.revenue) || 0), 0)
       );
@@ -634,7 +632,7 @@
         return n.toLocaleString('vi-VN') + ' ₫';
       };
 
-      // ===== NEW: SELL-OUT CHART =====
+      // ===== SELL-OUT CHART =====
       const initSelloutChart = () => {
         const ctx = document.getElementById('selloutChart');
         if (!ctx) return;
@@ -663,7 +661,7 @@
         });
       };
 
-      // ===== NEW: EXPORT SELL-OUT CSV =====
+      // ===== EXPORT SELL-OUT CSV =====
       const exportSelloutToCSV = () => {
         let csv = 'User,Team,Item,Qty,Revenue,Channel,Timestamp\n';
         sales.value.forEach(s => {
@@ -680,7 +678,7 @@
       // ===== INIT =====
       onMounted(() => {
         loadData();
-        loadSales(); // NEW
+        loadSales();
         lucide.createIcons();
       });
 
@@ -699,4 +697,3 @@
 </script>
 </body>
 </html>
-
