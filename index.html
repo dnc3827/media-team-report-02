@@ -41,7 +41,6 @@
         Báo cáo
       </button>
 
-      <!-- Sell-out tab -->
       <button
         @click="currentTab = 'sellout'"
         :class="{'bg-white shadow text-blue-600': currentTab === 'sellout'}"
@@ -62,7 +61,7 @@
 
   <main class="max-w-7xl mx-auto p-6">
 
-    <!-- REPORT TAB (original) -->
+    <!-- REPORT TAB -->
     <div v-if="currentTab === 'report'" class="max-w-xl mx-auto py-10">
       <div class="bg-white rounded-2xl shadow-xl p-8 border border-white overflow-hidden relative">
         <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-indigo-600"></div>
@@ -73,9 +72,29 @@
           <div class="grid grid-cols-2 gap-4">
             <div class="col-span-2 md:col-span-1">
               <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Họ tên nhân viên</label>
-              <input v-model="form.user" type="text" required
-                     class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" />
+
+              <div class="space-y-2">
+                <select
+                  v-model="reportUserSelected"
+                  class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  required
+                >
+                  <option value="" disabled>Chọn tên...</option>
+                  <option v-for="n in employeeNames" :key="'report_'+n" :value="n">{{ n }}</option>
+                  <option value="__new__">+ Nhập tên mới...</option>
+                </select>
+
+                <input
+                  v-if="reportUserSelected === '__new__'"
+                  v-model="reportUserNew"
+                  type="text"
+                  placeholder="Nhập tên mới..."
+                  class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  @blur="commitNewName('report')"
+                />
+              </div>
             </div>
+
             <div class="col-span-2 md:col-span-1">
               <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Nền tảng</label>
               <select v-model="form.platform"
@@ -103,10 +122,9 @@
       </div>
     </div>
 
-    <!-- SELL-OUT TAB (PUBLIC DASHBOARD) -->
+    <!-- SELL-OUT TAB -->
     <div v-if="currentTab === 'sellout'" class="space-y-6">
 
-      <!-- Form nhập sell-out -->
       <div class="max-w-2xl mx-auto">
         <div class="bg-white rounded-2xl shadow-xl p-8 border border-white overflow-hidden relative">
           <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-teal-600"></div>
@@ -117,9 +135,29 @@
             <div class="grid grid-cols-2 gap-4">
               <div class="col-span-2 md:col-span-1">
                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Họ tên nhân viên</label>
-                <input v-model="saleForm.user" type="text" required
-                       class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition" />
+
+                <div class="space-y-2">
+                  <select
+                    v-model="selloutUserSelected"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+                    required
+                  >
+                    <option value="" disabled>Chọn tên...</option>
+                    <option v-for="n in employeeNames" :key="'sellout_'+n" :value="n">{{ n }}</option>
+                    <option value="__new__">+ Nhập tên mới...</option>
+                  </select>
+
+                  <input
+                    v-if="selloutUserSelected === '__new__'"
+                    v-model="selloutUserNew"
+                    type="text"
+                    placeholder="Nhập tên mới..."
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+                    @blur="commitNewName('sellout')"
+                  />
+                </div>
               </div>
+
               <div class="col-span-2 md:col-span-1">
                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Team</label>
                 <select v-model="saleForm.team"
@@ -271,7 +309,6 @@
                     <td class="py-3 px-2 text-xs text-gray-500">{{ s.channel }}</td>
                     <td class="py-3 px-2 text-gray-400 text-[10px]">{{ formatTime(s.timestamp) }}</td>
                     <td class="py-3 px-2 text-right">
-                      <!-- Keep delete for admin only -->
                       <button v-if="isAdmin" @click="deleteSale(s.id)" class="text-red-400 hover:text-red-600 transition p-1">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                       </button>
@@ -289,7 +326,7 @@
 
     </div>
 
-    <!-- ADMIN TAB (original) -->
+    <!-- ADMIN TAB -->
     <div v-if="currentTab === 'admin' && isAdmin" class="space-y-6 animate-in fade-in duration-500">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div v-for="stat in stats" :key="stat.label" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
@@ -307,10 +344,30 @@
         </div>
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
-          <div class="flex justify-between items-center mb-4">
+          <!-- HEADER + SEARCH + EXPORT -->
+          <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
             <h4 class="font-bold">Lịch sử báo cáo (Real-time)</h4>
+
+            <!-- SEARCH BY USER -->
+            <div class="flex-1 md:max-w-xs">
+              <div class="relative">
+                <input
+                  v-model="searchUser"
+                  type="text"
+                  placeholder="Tìm theo tên nhân viên..."
+                  class="w-full pl-10 pr-3 py-2 text-sm border rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <i data-lucide="search" class="w-4 h-4"></i>
+                </span>
+              </div>
+              <p v-if="searchUser" class="text-[11px] text-gray-400 mt-1">
+                Đang lọc: <span class="font-bold text-gray-600">{{ filteredPosts.length }}</span> kết quả
+              </p>
+            </div>
+
             <button @click="exportToCSV"
-                    class="text-xs bg-green-50 text-green-600 px-3 py-1 rounded-full border border-green-200 font-bold hover:bg-green-100">
+                    class="text-xs bg-green-50 text-green-600 px-3 py-1 rounded-full border border-green-200 font-bold hover:bg-green-100 self-start md:self-auto">
               Xuất CSV
             </button>
           </div>
@@ -328,7 +385,7 @@
               </thead>
 
               <tbody class="divide-y divide-gray-50">
-              <tr v-for="post in posts" :key="post.id" class="hover:bg-blue-50/30 transition">
+              <tr v-for="post in filteredPosts" :key="post.id" class="hover:bg-blue-50/30 transition">
                 <td class="py-4 px-2 font-bold text-gray-700 text-sm">{{ post.user }}</td>
                 <td class="py-4 px-2">
                   <span :class="getPlatformColor(post.platform)"
@@ -353,13 +410,14 @@
               </tbody>
             </table>
           </div>
+
         </div>
 
       </div>
     </div>
   </main>
 
-  <!-- LOGIN MODAL (original) -->
+  <!-- LOGIN MODAL -->
   <div v-if="showLogin" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
     <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in duration-300">
       <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
@@ -400,9 +458,7 @@
   const useFirebase = true;
   try { firebase.initializeApp(firebaseConfig); } catch(e) {}
 
-  // Original posts ref
   const db = firebase.database().ref('posts');
-  // Sell-out ref
   const dbSales = firebase.database().ref('sales');
 
   const { createApp, ref, onMounted, computed, watch, nextTick } = Vue;
@@ -426,7 +482,105 @@
       const topN = ref(10);
       let selloutChart = null;
 
-      // ===== LOAD POSTS (original) =====
+      // ===== NEW: EMPLOYEE NAME MEMORY (localStorage) =====
+      const EMPLOYEE_KEY = 'mediahub_employee_names_v1';
+      const LAST_REPORT_KEY = 'mediahub_last_report_user_v1';
+      const LAST_SELLOUT_KEY = 'mediahub_last_sellout_user_v1';
+
+      const employeeNames = ref([]);
+
+      const reportUserSelected = ref('');
+      const reportUserNew = ref('');
+
+      const selloutUserSelected = ref('');
+      const selloutUserNew = ref('');
+
+      const normalizeName = (name) => (name || '').trim().replace(/\s+/g, ' ');
+
+      const loadEmployeeNames = () => {
+        try {
+          const raw = localStorage.getItem(EMPLOYEE_KEY);
+          const arr = raw ? JSON.parse(raw) : [];
+          employeeNames.value = Array.isArray(arr) ? arr : [];
+        } catch {
+          employeeNames.value = [];
+        }
+      };
+
+      const saveEmployeeNames = () => {
+        localStorage.setItem(EMPLOYEE_KEY, JSON.stringify(employeeNames.value));
+      };
+
+      const upsertName = (name) => {
+        const n = normalizeName(name);
+        if (!n) return '';
+        const exists = employeeNames.value.some(x => x.toLowerCase() === n.toLowerCase());
+        if (!exists) {
+          employeeNames.value.unshift(n);
+          employeeNames.value = employeeNames.value.slice(0, 200);
+          saveEmployeeNames();
+        }
+        return n;
+      };
+
+      const commitNewName = (context) => {
+        if (context === 'report') {
+          const n = upsertName(reportUserNew.value);
+          if (n) {
+            reportUserSelected.value = n;
+            reportUserNew.value = '';
+            form.value.user = n;
+            localStorage.setItem(LAST_REPORT_KEY, n);
+          }
+        } else {
+          const n = upsertName(selloutUserNew.value);
+          if (n) {
+            selloutUserSelected.value = n;
+            selloutUserNew.value = '';
+            saleForm.value.user = n;
+            localStorage.setItem(LAST_SELLOUT_KEY, n);
+          }
+        }
+      };
+
+      watch(reportUserSelected, (val) => {
+        if (val && val !== '__new__') {
+          form.value.user = val;
+          localStorage.setItem(LAST_REPORT_KEY, val);
+          upsertName(val);
+        } else if (val === '__new__') {
+          form.value.user = '';
+        }
+      });
+
+      watch(selloutUserSelected, (val) => {
+        if (val && val !== '__new__') {
+          saleForm.value.user = val;
+          localStorage.setItem(LAST_SELLOUT_KEY, val);
+          upsertName(val);
+        } else if (val === '__new__') {
+          saleForm.value.user = '';
+        }
+      });
+
+      // ===== NEW: ADMIN SEARCH BY USER =====
+      const searchUser = ref('');
+
+      const stripVN = (str) => (str || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .toLowerCase()
+        .trim();
+
+      const filteredPosts = computed(() => {
+        const q = stripVN(searchUser.value);
+        if (!q) return posts.value;
+        return posts.value.filter(p => stripVN(p.user).includes(q));
+      });
+
+      // ===== LOAD POSTS =====
       const loadData = () => {
         db.on('value', (snapshot) => {
           const data = snapshot.val();
@@ -445,7 +599,7 @@
         });
       };
 
-      // ===== LOAD SALES (PUBLIC dashboard needs chart refresh without admin) =====
+      // ===== LOAD SALES =====
       const loadSales = () => {
         dbSales.on('value', (snapshot) => {
           const data = snapshot.val();
@@ -458,21 +612,32 @@
             sales.value = [];
           }
 
-          // PUBLIC: if currently on sellout tab, update chart
           if (currentTab.value === 'sellout') {
             setTimeout(() => { initSelloutChart(); lucide.createIcons(); }, 100);
           }
         });
       };
 
-      // ===== SUBMIT REPORT (original) =====
+      // ===== SUBMIT REPORT =====
       const submitReport = async () => {
+        if (reportUserSelected.value === '__new__') commitNewName('report');
+
+        const userName = normalizeName(form.value.user);
+        if (!userName) {
+          alert('Vui lòng chọn hoặc nhập Họ tên nhân viên.');
+          return;
+        }
+        form.value.user = userName;
+        upsertName(userName);
+        localStorage.setItem(LAST_REPORT_KEY, userName);
+
         loading.value = true;
         try {
           const newPost = { ...form.value, timestamp: new Date().getTime() };
           await db.push(newPost);
           alert('Báo cáo đã được ghi lại thành công!');
-          form.value = { user: '', platform: 'Facebook', link: '' };
+          form.value = { user: userName, platform: 'Facebook', link: '' };
+          reportUserSelected.value = userName;
         } catch (error) {
           alert('Lỗi: ' + error.message);
         } finally {
@@ -480,7 +645,7 @@
         }
       };
 
-      // ===== DELETE POST (original) =====
+      // ===== DELETE POST =====
       const deletePost = async (id) => {
         if (confirm('Bạn có chắc chắn muốn xóa báo cáo này?')) {
           try {
@@ -493,6 +658,17 @@
 
       // ===== SUBMIT SALE =====
       const submitSale = async () => {
+        if (selloutUserSelected.value === '__new__') commitNewName('sellout');
+
+        const userName = normalizeName(saleForm.value.user);
+        if (!userName) {
+          alert('Vui lòng chọn hoặc nhập Họ tên nhân viên.');
+          return;
+        }
+        saleForm.value.user = userName;
+        upsertName(userName);
+        localStorage.setItem(LAST_SELLOUT_KEY, userName);
+
         saleLoading.value = true;
         try {
           const payload = {
@@ -503,7 +679,8 @@
           };
           await dbSales.push(payload);
           alert('Sell-out đã được ghi lại!');
-          saleForm.value = { user: '', team: 'Sale', item: '', qty: 1, revenue: 0, channel: 'Online' };
+          saleForm.value = { user: userName, team: 'Sale', item: '', qty: 1, revenue: 0, channel: 'Online' };
+          selloutUserSelected.value = userName;
         } catch (error) {
           alert('Lỗi: ' + error.message);
         } finally {
@@ -511,7 +688,7 @@
         }
       };
 
-      // ===== DELETE SALE (admin only in UI) =====
+      // ===== DELETE SALE =====
       const deleteSale = async (id) => {
         if (confirm('Bạn có chắc chắn muốn xóa sell-out này?')) {
           try {
@@ -522,7 +699,7 @@
         }
       };
 
-      // ===== ADMIN ACCESS (original) =====
+      // ===== ADMIN ACCESS =====
       const checkAdminAccess = () => {
         if (isAdmin.value) currentTab.value = 'admin';
         else showLogin.value = true;
@@ -538,7 +715,7 @@
         }
       };
 
-      // ===== WATCH TAB (PUBLIC sellout chart) =====
+      // ===== WATCH TAB =====
       watch(currentTab, async (newTab) => {
         if (newTab === 'admin' && isAdmin.value) {
           await nextTick();
@@ -554,7 +731,7 @@
         }
       });
 
-      // ===== STATS (original) =====
+      // ===== STATS =====
       const stats = computed(() => [
         { label: 'Tổng bài đăng', value: posts.value.length },
         { label: 'Facebook', value: posts.value.filter(p => p.platform === 'Facebook').length },
@@ -562,14 +739,14 @@
         { label: 'Khác', value: posts.value.filter(p => !['Facebook', 'TikTok'].includes(p.platform)).length },
       ]);
 
-      // ===== HELPERS (original) =====
+      // ===== HELPERS =====
       const formatTime = (ts) => new Date(ts).toLocaleString('vi-VN');
       const getPlatformColor = (p) => {
         const colors = { 'Facebook': 'bg-blue-600', 'TikTok': 'bg-black', 'Instagram': 'bg-pink-600', 'YouTube': 'bg-red-600' };
         return colors[p] || 'bg-gray-500';
       };
 
-      // ===== CHART (original) =====
+      // ===== CHART =====
       const initChart = () => {
         const ctx = document.getElementById('platformChart');
         if (!ctx) return;
@@ -588,7 +765,7 @@
         });
       };
 
-      // ===== EXPORT CSV (original) =====
+      // ===== EXPORT CSV =====
       const exportToCSV = () => {
         let csv = 'User,Platform,Link,Timestamp\n';
         posts.value.forEach(p => csv += `${p.user},${p.platform},${p.link},${formatTime(p.timestamp)}\n`);
@@ -677,6 +854,29 @@
 
       // ===== INIT =====
       onMounted(() => {
+        loadEmployeeNames();
+
+        const lastReport = localStorage.getItem(LAST_REPORT_KEY) || '';
+        const lastSellout = localStorage.getItem(LAST_SELLOUT_KEY) || '';
+
+        if (lastReport) {
+          reportUserSelected.value = lastReport;
+          form.value.user = lastReport;
+          upsertName(lastReport);
+        } else if (employeeNames.value.length) {
+          reportUserSelected.value = employeeNames.value[0];
+          form.value.user = employeeNames.value[0];
+        }
+
+        if (lastSellout) {
+          selloutUserSelected.value = lastSellout;
+          saleForm.value.user = lastSellout;
+          upsertName(lastSellout);
+        } else if (employeeNames.value.length) {
+          selloutUserSelected.value = employeeNames.value[0];
+          saleForm.value.user = employeeNames.value[0];
+        }
+
         loadData();
         loadSales();
         lucide.createIcons();
@@ -688,9 +888,18 @@
         stats, submitReport, deletePost, checkAdminAccess, loginAdmin,
         formatTime, getPlatformColor, exportToCSV,
 
+        // admin search
+        searchUser, filteredPosts,
+
         // sell-out
         sales, saleForm, saleLoading, submitSale, deleteSale,
-        ranking, topN, totalRevenue, totalQty, formatVND, exportSelloutToCSV
+        ranking, topN, totalRevenue, totalQty, formatVND, exportSelloutToCSV,
+
+        // employee memory
+        employeeNames,
+        reportUserSelected, reportUserNew,
+        selloutUserSelected, selloutUserNew,
+        commitNewName
       };
     }
   }).mount('#app');
