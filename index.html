@@ -328,6 +328,128 @@
 
     <!-- ADMIN TAB -->
     <div v-if="currentTab === 'admin' && isAdmin" class="space-y-6 animate-in fade-in duration-500">
+
+      <!-- ADMIN: ANNOUNCEMENT EDITOR -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <div class="flex items-center gap-2">
+            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center">
+              <i data-lucide="megaphone" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="font-black text-gray-800">Thông báo khi vào web</h3>
+              <p class="text-xs text-gray-400">
+                Người dùng sẽ thấy modal khi có thông báo mới (theo updatedAt).
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-gray-400 uppercase">Bật thông báo</span>
+            <button
+              @click="announceEdit.enabled = !announceEdit.enabled"
+              class="px-3 py-1 rounded-full text-xs font-black border transition"
+              :class="announceEdit.enabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-500 border-gray-200'"
+            >
+              {{ announceEdit.enabled ? 'ON' : 'OFF' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-5">
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Tiêu đề</label>
+              <input
+                v-model="announceEdit.title"
+                type="text"
+                placeholder="Ví dụ: Cập nhật chính sách báo cáo / thông báo nghỉ lễ..."
+                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Nội dung</label>
+              <textarea
+                v-model="announceEdit.content"
+                rows="7"
+                placeholder="- Nội dung 1&#10;- Nội dung 2&#10;* Ghi chú..."
+                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+              ></textarea>
+              <p class="text-[11px] text-gray-400 mt-1">
+                Mẹo: xuống dòng sẽ hiển thị đúng trong modal.
+              </p>
+            </div>
+
+            <div class="flex gap-2 flex-wrap">
+              <button
+                @click="saveAnnouncement"
+                :disabled="announceSaving"
+                class="px-4 py-3 rounded-xl font-black text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:scale-[1.01] active:scale-[0.99] transition shadow"
+              >
+                <span v-if="announceSaving" class="inline-flex items-center gap-2">
+                  <span class="animate-spin">⏳</span> Đang lưu...
+                </span>
+                <span v-else class="inline-flex items-center gap-2">
+                  <i data-lucide="save" class="w-4 h-4"></i>
+                  Lưu thông báo
+                </span>
+              </button>
+
+              <button
+                @click="resetAnnounceEdit"
+                class="px-4 py-3 rounded-xl font-black text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
+              >
+                Reset theo dữ liệu hiện tại
+              </button>
+
+              <button
+                @click="forceShowAnnouncement"
+                class="px-4 py-3 rounded-xl font-black text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition"
+              >
+                Xem thử modal
+              </button>
+            </div>
+
+            <p v-if="announcement.updatedAt" class="text-[11px] text-gray-400">
+              Lần cập nhật gần nhất: <span class="font-bold text-gray-600">{{ formatTime(announcement.updatedAt) }}</span>
+            </p>
+          </div>
+
+          <!-- Preview -->
+          <div class="bg-gray-50 border border-gray-200 rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+              <h4 class="font-black text-gray-800">Preview</h4>
+              <span class="text-[10px] font-black px-2 py-1 rounded-full"
+                    :class="announceEdit.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'">
+                {{ announceEdit.enabled ? 'Sẽ hiển thị' : 'Đang tắt' }}
+              </span>
+            </div>
+
+            <div class="mt-4 bg-white rounded-2xl border border-gray-100 p-5">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
+                  <i data-lucide="bell-ring" class="w-5 h-5"></i>
+                </div>
+                <div class="min-w-0">
+                  <div class="font-black text-gray-800">
+                    {{ announceEdit.title || 'Thông báo từ Admin' }}
+                  </div>
+                  <div class="mt-2 text-sm text-gray-600 whitespace-pre-line">
+                    {{ announceEdit.content || 'Chưa có nội dung.' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-gray-400 mt-3">
+              Lưu ý: Modal ngoài trang sẽ tự hiện khi admin “Lưu thông báo” (updatedAt thay đổi).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- stats -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div v-for="stat in stats" :key="stat.label" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
           <p class="text-gray-400 text-xs font-bold uppercase">{{ stat.label }}</p>
@@ -417,6 +539,48 @@
     </div>
   </main>
 
+  <!-- ANNOUNCEMENT MODAL (SHOW ON LOAD, FROM FIREBASE) -->
+  <div v-if="showAnnouncement" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[120] p-4">
+    <div class="bg-white rounded-3xl p-7 max-w-lg w-full shadow-2xl animate-in zoom-in duration-300 relative overflow-hidden">
+      <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-blue-600"></div>
+
+      <div class="flex items-start gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
+          <i data-lucide="bell-ring" class="w-6 h-6"></i>
+        </div>
+
+        <div class="min-w-0">
+          <h3 class="text-lg font-black text-gray-800">
+            {{ announcement.title || 'Thông báo từ Admin' }}
+          </h3>
+          <p v-if="announcement.updatedAt" class="text-[11px] text-gray-400 mt-1">
+            Cập nhật: <span class="font-bold text-gray-600">{{ formatTime(announcement.updatedAt) }}</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-4 text-sm text-gray-700 whitespace-pre-line bg-gray-50 border border-gray-200 rounded-2xl p-4">
+        {{ announcement.content || 'Chưa có nội dung thông báo.' }}
+      </div>
+
+      <div class="mt-6 flex gap-2">
+        <button
+          @click="closeAnnouncement"
+          class="flex-1 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 transition"
+        >
+          Đã hiểu
+        </button>
+        <button
+          @click="closeAnnouncement(true)"
+          class="py-3 px-4 bg-gray-100 text-gray-600 font-black rounded-xl hover:bg-gray-200 transition"
+          title="Không hiện lại cho thông báo này"
+        >
+          Ẩn
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- LOGIN MODAL -->
   <div v-if="showLogin" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
     <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in duration-300">
@@ -455,11 +619,13 @@
     databaseURL: "https://social-post-reporting-default-rtdb.asia-southeast1.firebasedatabase.app/"
   };
 
-  const useFirebase = true;
   try { firebase.initializeApp(firebaseConfig); } catch(e) {}
 
   const db = firebase.database().ref('posts');
   const dbSales = firebase.database().ref('sales');
+
+  // NEW: announcement node
+  const dbAnnouncement = firebase.database().ref('announcement');
 
   const { createApp, ref, onMounted, computed, watch, nextTick } = Vue;
 
@@ -482,7 +648,7 @@
       const topN = ref(10);
       let selloutChart = null;
 
-      // ===== NEW: EMPLOYEE NAME MEMORY (localStorage) =====
+      // ===== EMPLOYEE NAME MEMORY =====
       const EMPLOYEE_KEY = 'mediahub_employee_names_v1';
       const LAST_REPORT_KEY = 'mediahub_last_report_user_v1';
       const LAST_SELLOUT_KEY = 'mediahub_last_sellout_user_v1';
@@ -563,7 +729,7 @@
         }
       });
 
-      // ===== NEW: ADMIN SEARCH BY USER =====
+      // ===== ADMIN SEARCH BY USER =====
       const searchUser = ref('');
 
       const stripVN = (str) => (str || '')
@@ -579,6 +745,114 @@
         if (!q) return posts.value;
         return posts.value.filter(p => stripVN(p.user).includes(q));
       });
+
+      // ===== NEW: ANNOUNCEMENT SYSTEM =====
+      const ANNOUNCE_SEEN_KEY = 'mediahub_announcement_seen_v1';
+
+      const announcement = ref({
+        enabled: false,
+        title: '',
+        content: '',
+        updatedAt: 0
+      });
+
+      const announceEdit = ref({
+        enabled: false,
+        title: '',
+        content: ''
+      });
+
+      const showAnnouncement = ref(false);
+      const announceSaving = ref(false);
+
+      const shouldAutoShowAnnouncement = (a) => {
+        if (!a || !a.enabled) return false;
+        const updatedAt = Number(a.updatedAt || 0);
+        if (!updatedAt) return false;
+
+        const seen = Number(localStorage.getItem(ANNOUNCE_SEEN_KEY) || 0);
+        return updatedAt > seen;
+      };
+
+      const closeAnnouncement = (silent = false) => {
+        // mark seen for this announcement version
+        const updatedAt = Number(announcement.value.updatedAt || 0);
+        if (updatedAt) localStorage.setItem(ANNOUNCE_SEEN_KEY, String(updatedAt));
+        showAnnouncement.value = false;
+        if (!silent) setTimeout(() => lucide.createIcons(), 50);
+      };
+
+      const resetAnnounceEdit = () => {
+        announceEdit.value = {
+          enabled: !!announcement.value.enabled,
+          title: announcement.value.title || '',
+          content: announcement.value.content || ''
+        };
+        setTimeout(() => lucide.createIcons(), 50);
+      };
+
+      const forceShowAnnouncement = () => {
+        // show preview based on current edit, not necessarily saved
+        announcement.value = {
+          enabled: !!announceEdit.value.enabled,
+          title: announceEdit.value.title || '',
+          content: announceEdit.value.content || '',
+          updatedAt: announcement.value.updatedAt || Date.now()
+        };
+        showAnnouncement.value = true;
+        setTimeout(() => lucide.createIcons(), 50);
+      };
+
+      const loadAnnouncement = () => {
+        dbAnnouncement.on('value', (snapshot) => {
+          const data = snapshot.val();
+          if (data && typeof data === 'object') {
+            announcement.value = {
+              enabled: !!data.enabled,
+              title: data.title || '',
+              content: data.content || '',
+              updatedAt: Number(data.updatedAt || 0)
+            };
+          } else {
+            announcement.value = { enabled: false, title: '', content: '', updatedAt: 0 };
+          }
+
+          // sync edit form if empty (or first time)
+          if (!announceEdit.value.title && !announceEdit.value.content) {
+            resetAnnounceEdit();
+          }
+
+          // auto-show on load if new
+          if (shouldAutoShowAnnouncement(announcement.value)) {
+            showAnnouncement.value = true;
+          }
+
+          setTimeout(() => lucide.createIcons(), 50);
+        });
+      };
+
+      const saveAnnouncement = async () => {
+        announceSaving.value = true;
+        try {
+          const payload = {
+            enabled: !!announceEdit.value.enabled,
+            title: (announceEdit.value.title || '').trim(),
+            content: (announceEdit.value.content || '').trim(),
+            updatedAt: Date.now()
+          };
+          await dbAnnouncement.set(payload);
+
+          // (Optional) after saving, you can also force modal show next time by clearing seen:
+          // localStorage.removeItem(ANNOUNCE_SEEN_KEY);
+
+          alert('Đã lưu thông báo! Người dùng sẽ thấy khi vào web (thông báo mới).');
+        } catch (e) {
+          alert('Lỗi lưu thông báo: ' + (e && e.message ? e.message : e));
+        } finally {
+          announceSaving.value = false;
+          setTimeout(() => lucide.createIcons(), 50);
+        }
+      };
 
       // ===== LOAD POSTS =====
       const loadData = () => {
@@ -710,6 +984,9 @@
           isAdmin.value = true;
           showLogin.value = false;
           currentTab.value = 'admin';
+          // load current announcement into editor when admin logs in
+          resetAnnounceEdit();
+          setTimeout(() => lucide.createIcons(), 50);
         } else {
           alert('Sai mật khẩu!');
         }
@@ -720,6 +997,7 @@
         if (newTab === 'admin' && isAdmin.value) {
           await nextTick();
           initChart();
+          resetAnnounceEdit();
           lucide.createIcons();
         } else if (newTab === 'sellout') {
           await nextTick();
@@ -879,6 +1157,10 @@
 
         loadData();
         loadSales();
+
+        // NEW: load announcement + auto show if new
+        loadAnnouncement();
+
         lucide.createIcons();
       });
 
@@ -899,7 +1181,17 @@
         employeeNames,
         reportUserSelected, reportUserNew,
         selloutUserSelected, selloutUserNew,
-        commitNewName
+        commitNewName,
+
+        // announcement
+        announcement,
+        announceEdit,
+        showAnnouncement,
+        closeAnnouncement,
+        saveAnnouncement,
+        resetAnnounceEdit,
+        forceShowAnnouncement,
+        announceSaving
       };
     }
   }).mount('#app');
